@@ -18,7 +18,7 @@
 ## 📁 IMPORTANT: FILE LOCATIONS
 
 ### VirtualBox Installation
-# 💡 Virtual box 7.2.4 will be installed automatically if it is not present at the default download location `C:\Program Files\Oracle\VirtualBox\`
+💡*Important*: Virtual box 7.2.4 will be installed automatically if it is not present at the default download location `C:\Program Files\Oracle\VirtualBox\`
 
 | Item | Location |
 |------|----------|
