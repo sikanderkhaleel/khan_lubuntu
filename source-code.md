@@ -52,6 +52,46 @@ echo Working directory: %cd%
 echo.
 
 :: ============================================
+:: CHECK VIRTUALIZATION SUPPORT (EARLY CHECK)
+:: ============================================
+echo Checking if virtualization is enabled...
+echo.
+
+powershell -Command "if ((Get-WmiObject Win32_Processor).VirtualizationFirmwareEnabled -eq $true) { exit 0 } else { exit 1 }"
+
+if !errorlevel! neq 0 (
+    echo.
+    echo ==========================================
+    echo   [ERROR] Virtualization is DISABLED!
+    echo ==========================================
+    echo.
+    echo Your computer has virtualization turned off in BIOS.
+    echo VirtualBox needs this to run virtual machines.
+    echo.
+    echo Please follow these steps to enable it:
+    echo.
+    echo   1. Restart your computer
+    echo   2. Press F2, F10, F12, DEL or ESC during startup
+    echo      ^(depends on your computer brand^)
+    echo   3. Find "Virtualization" or "VT-x" or "AMD-V" setting
+    echo   4. Enable it
+    echo   5. Save and exit BIOS
+    echo   6. Run this script again
+    echo.
+    echo Common BIOS keys by brand:
+    echo   HP: F10
+    echo   Dell: F2
+    echo   Lenovo: F1 or F2
+    echo   Asus: F2 or DEL
+    echo   Acer: F2 or DEL
+    echo.
+    goto :restore_sleep
+)
+
+echo [OK] Virtualization is enabled!
+echo.
+
+:: ============================================
 :: PART 1: VDI DOWNLOAD
 :: ============================================
 echo ==========================================
@@ -158,7 +198,7 @@ if exist "%VBOXMANAGE%" (
     echo.
     "%VBOXMANAGE%" --version
     echo.
-    goto :create_vm
+    goto :verify_vdi
 )
 
 echo VirtualBox not found. Proceeding with setup...
@@ -287,6 +327,42 @@ if exist "%VBOXMANAGE%" (
 )
 
 :: ============================================
+:: VERIFY VDI INTEGRITY
+:: ============================================
+:verify_vdi
+echo.
+echo ==========================================
+echo   Verifying VDI Integrity
+echo ==========================================
+echo.
+
+echo Checking if VDI file is valid...
+
+"%VBOXMANAGE%" showmediuminfo disk "%VDI_PATH%" >nul 2>&1
+
+if !errorlevel! neq 0 (
+    echo.
+    echo ==========================================
+    echo   [ERROR] VDI file is corrupted!
+    echo ==========================================
+    echo.
+    echo The VDI file appears to be 7-8GB in size but is actually
+    echo incomplete or corrupted due to an interrupted download.
+    echo.
+    echo Deleting corrupted VDI file...
+    del "%VDI_PATH%" >nul 2>&1
+    del "%VDI_PATH%.aria2" >nul 2>&1
+    echo [OK] Corrupted files deleted.
+    echo.
+    echo Please run this script again to re-download the VDI.
+    echo.
+    goto :restore_sleep
+)
+
+echo [OK] VDI file is valid!
+echo.
+
+:: ============================================
 :: PART 3: CREATE VIRTUAL MACHINE
 :: ============================================
 :create_vm
@@ -321,38 +397,46 @@ if %errorlevel% equ 0 (
     echo [FOUND] VM "%VM_NAME%" exists.
     echo.
     
-    :: Verify VDI exists
-    echo Verifying VDI integrity...
+    :: Verify VDI exists in VM folder
+    echo Verifying VM integrity...
     
     if exist "%VM_FOLDER%\%VDI_NAME%" (
         :: Use PowerShell for large file size comparison (greater than 7GB)
         powershell -Command "if ((Get-Item '%VM_FOLDER%\%VDI_NAME%').Length -gt 7000000000) { exit 0 } else { exit 1 }"
         
         if !errorlevel! equ 0 (
-            echo [OK] VDI is complete.
-            echo.
-            goto :start_vm
-        ) else (
-            echo.
-            echo ==========================================
-            echo   [ERROR] VDI is incomplete or corrupted!
-            echo ==========================================
-            echo.
-            echo The VDI file is smaller than expected.
-            echo.
-            echo Please follow these steps:
-            echo.
-            echo   1. Open VirtualBox
-            echo   2. Right-click on "%VM_NAME%" and select "Remove"
-            echo   3. Choose "Delete all files"
-            echo.
-            echo   If folder still exists, manually delete:
-            echo   %VM_FOLDER%
-            echo.
-            echo Then run this script again.
-            echo.
-            goto :restore_sleep
+            :: Also verify with VBoxManage
+            "%VBOXMANAGE%" showmediuminfo disk "%VM_FOLDER%\%VDI_NAME%" >nul 2>&1
+            if !errorlevel! equ 0 (
+                echo [OK] VM VDI is valid and complete.
+                echo.
+                goto :start_vm
+            )
         )
+        
+        echo.
+        echo ==========================================
+        echo   [ERROR] VM VDI is incomplete or corrupted!
+        echo ==========================================
+        echo.
+        echo The VDI file may appear to be 7-8GB in size but is actually
+        echo incomplete or corrupted due to an interrupted process.
+        echo.
+        echo Please follow these steps:
+        echo.
+        echo   1. Open VirtualBox
+        echo   2. Right-click on "%VM_NAME%" and select "Remove"
+        echo   3. Choose "Delete all files"
+        echo.
+        echo   If folder still exists, manually delete:
+        echo   %VM_FOLDER%
+        echo.
+        echo   Also delete the VDI in the script folder:
+        echo   %VDI_PATH%
+        echo.
+        echo Then run this script again.
+        echo.
+        goto :restore_sleep
     ) else (
         echo.
         echo ==========================================
@@ -482,16 +566,24 @@ if %errorlevel% neq 0 (
     rd /s /q "%VM_FOLDER%" >nul 2>&1
     
     echo.
-    echo If cleanup failed, please follow these steps:
+    echo ==========================================
+    echo   IMPORTANT NOTICE
+    echo ==========================================
     echo.
-    echo   1. Open VirtualBox
-    echo   2. If "%VM_NAME%" exists, right-click and select "Remove"
-    echo   3. Choose "Delete all files"
+    echo If the problem persists, it may be due to an incomplete
+    echo download of "KhanLubuntu24.04.vdi".
     echo.
-    echo   Also manually delete this folder if it exists:
-    echo   %VM_FOLDER%
+    echo The file size may appear to be 7-8GB, but an error may
+    echo have occurred during the download process.
     echo.
-    echo Then free up disk space and run this script again.
+    echo Please follow these steps:
+    echo.
+    echo   1. Navigate to the folder containing this script
+    echo   2. Delete the file "KhanLubuntu24.04.vdi"
+    echo   3. Also delete "KhanLubuntu24.04.vdi.aria2" if it exists
+    echo   4. Run this script again
+    echo.
+    echo ==========================================
     echo.
     goto :restore_sleep
 )
@@ -516,16 +608,24 @@ if %errorlevel% neq 0 (
     "%VBOXMANAGE%" unregistervm "%VM_NAME%" --delete >nul 2>&1
     rd /s /q "%VM_FOLDER%" >nul 2>&1
     
-    echo If cleanup failed, please follow these steps:
+    echo ==========================================
+    echo   IMPORTANT NOTICE
+    echo ==========================================
     echo.
-    echo   1. Open VirtualBox
-    echo   2. If "%VM_NAME%" exists, right-click and select "Remove"
-    echo   3. Choose "Delete all files"
+    echo If the problem persists, it may be due to an incomplete
+    echo download of "KhanLubuntu24.04.vdi".
     echo.
-    echo   Also manually delete this folder if it exists:
-    echo   %VM_FOLDER%
+    echo The file size may appear to be 7-8GB, but an error may
+    echo have occurred during the download process.
     echo.
-    echo Then run this script again.
+    echo Please follow these steps:
+    echo.
+    echo   1. Navigate to the folder containing this script
+    echo   2. Delete the file "KhanLubuntu24.04.vdi"
+    echo   3. Also delete "KhanLubuntu24.04.vdi.aria2" if it exists
+    echo   4. Run this script again
+    echo.
+    echo ==========================================
     echo.
     goto :restore_sleep
 )
@@ -567,7 +667,46 @@ if %errorlevel% equ 0 (
     echo.
 ) else (
     echo.
-    echo [ERROR] Failed to start VM!
+    echo ==========================================
+    echo   [ERROR] Failed to start VM!
+    echo ==========================================
+    echo.
+    echo This might be because virtualization is disabled.
+    echo.
+    echo Please follow these steps:
+    echo.
+    echo   1. Restart your computer
+    echo   2. Enter BIOS ^(press F2, F10, DEL during startup^)
+    echo   3. Find "Virtualization" or "VT-x" or "AMD-V"
+    echo   4. Enable it
+    echo   5. Save and exit BIOS
+    echo   6. Run this script again
+    echo.
+    echo Common BIOS keys:
+    echo   HP: F10    Dell: F2    Lenovo: F1/F2
+    echo   Asus: F2/DEL    Acer: F2/DEL
+    echo.
+    echo ==========================================
+    echo   IMPORTANT NOTICE
+    echo ==========================================
+    echo.
+    echo If the problem persists, it may be due to an incomplete
+    echo download of "KhanLubuntu24.04.vdi".
+    echo.
+    echo The file size may appear to be 7-8GB, but an error may
+    echo have occurred during the download process.
+    echo.
+    echo Please follow these steps:
+    echo.
+    echo   1. Navigate to the folder containing this script
+    echo   2. Delete the file "KhanLubuntu24.04.vdi"
+    echo   3. Also delete "KhanLubuntu24.04.vdi.aria2" if it exists
+    echo   4. Delete the VM folder:
+    echo      %VM_FOLDER%
+    echo   5. Run this script again
+    echo.
+    echo ==========================================
+    echo.
 )
 
 :: ============================================
