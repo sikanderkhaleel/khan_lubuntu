@@ -1,6 +1,7 @@
 # Khan_Lubuntu24.04 LTS
 ---
 
+## A Fully Automated Linux Learning Environment for Students
 ## 🚀 GET STARTED IN SECONDS
 
 **All you need to do is:**
@@ -13,7 +14,6 @@
 
 ---
 
-### A Fully Automated Linux Learning Environment for Students
 
 ---
 
