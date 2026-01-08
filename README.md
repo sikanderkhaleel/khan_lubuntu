@@ -117,16 +117,6 @@ Then you have a fully working Linux system!
 ### 🚀 Fast Download
 Uses **aria2c** download manager with **16 parallel connections**. This makes the download much faster than a normal browser download!
 
-### 🔄 Resume Support
-**Internet disconnected? PC crashed? Closed the window by accident?**
-
-No problem! Just run the script again. Thanks to **aria2c's resume capability** (`--continue=true`), your download will **continue from where it left off**. No progress lost!
-
-| Scenario | What Happens |
-|----------|--------------|
-| Downloaded 5GB, internet dies | Run again → Downloads remaining 3GB only |
-| Closed window at 50% | Run again → Continues from 50% |
-| PC restarted at 90% | Run again → Downloads remaining 10% only |
 
 ### 🤖 Fully Automated
 - No user input required
