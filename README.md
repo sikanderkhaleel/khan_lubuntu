@@ -171,7 +171,7 @@ A fully configured Lubuntu 24.04 LTS virtual machine with:
 ---
 ## 🤝 Credits
 
-- [aria2c](https://aria2.github.io) - Fast download manager with resume support
+- [aria2c](https://aria2.github.io) - Fast download manager
 - [VirtualBox](https://www.virtualbox.org) - Virtualization software
 - [Archive.org](https://archive.org) - Reliable file hosting
 - [Lubuntu](https://lubuntu.me) - Lightweight Linux distribution
